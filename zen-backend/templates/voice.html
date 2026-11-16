@@ -868,6 +868,10 @@
     </div>
 
     <script>
+        const BACKEND_URL = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+            ? ''
+            : (localStorage.getItem('zen_backend_url') || 'http://127.0.0.1:5000');
+
         let isListening = false;
         let recognition = null;
         let ttsEnabled = false;
@@ -1172,7 +1176,7 @@
                     systemStatus.innerText = 'Zen is processing...';
 
                     try {
-                        const response = await fetch('/agent', {
+                        const response = await fetch(`${BACKEND_URL}/agent`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ text: cleanText })
