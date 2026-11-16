@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zen Voice Assistant</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+        .button-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            flex: 1;
+            padding: 15px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        #startBtn {
+            background: #667eea;
+            color: white;
+        }
+        #startBtn:hover { background: #5568d3; }
+        #startBtn:disabled { background: #ccc; cursor: not-allowed; }
+        
+        #clearBtn {
+            background: #e74c3c;
+            color: white;
+            width: 120px;
+            flex: none;
+        }
+        #clearBtn:hover { background: #c0392b; }
+        
+        .output-section {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 150px;
+        }
+        .label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+        #userText {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            min-height: 40px;
+            word-wrap: break-word;
+        }
+        #zenResponse {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid #27ae60;
+            min-height: 40px;
+            word-wrap: break-word;
+        }
+        #status {
+            text-align: center;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Zen Voice Assistant</h1>
+    <p class="subtitle">Click "Start Listening" and speak your command</p>
+    
+    <div class="button-container">
+        <button id="startBtn" onclick="startListening()">Start Listening</button>
+        <button id="clearBtn" onclick="clearOutput()">Clear</button>
+    </div>
+    
+    <div class="output-section">
+        <div class="label">You said:</div>
+        <div id="userText">Waiting for input...</div>
+        
+        <div class="label" style="margin-top: 15px;">Zen says:</div>
+        <div id="zenResponse">Waiting for response...</div>
+        
+        <div id="status"></div>
+    </div>
+</div>
+
+<script>
+let isListening = false;
+
+function updateStatus(message, type = 'info') {
+    const statusDiv = document.getElementById('status');
+    statusDiv.className = type;
+    statusDiv.innerText = message;
+}
+
+function clearOutput() {
+    document.getElementById('userText').innerText = 'Waiting for input...';
+    document.getElementById('zenResponse').innerText = 'Waiting for response...';
+    updateStatus('');
+}
+
+function startListening() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+        updateStatus('Speech Recognition not supported. Use Chrome, Edge, or Safari.', 'error');
+        return;
+    }
+    
+    isListening = true;
+    document.getElementById('startBtn').disabled = true;
+    updateStatus('Listening... Speak now', 'info');
+    console.log('Speech recognition started');
+    
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    
+    recognition.onstart = () => {
+        console.log('Recognition started');
+        updateStatus('Listening... Speak now', 'info');
+    };
+    
+    recognition.onresult = async (event) => {
+        const text = event.results[0][0].transcript;
+        console.log('Transcript:', text);
+        
+        document.getElementById('userText').innerText = text;
+        updateStatus('Processing...', 'info');
+        document.getElementById('zenResponse').innerText = 'Processing...';
+        
+        try {
+            console.log('Sending to /agent:', text);
+            const response = await fetch('/agent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            });
+            
+            console.log('Response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('Response data:', data);
+            
+            document.getElementById('zenResponse').innerText = data.reply || 'Done';
+            updateStatus('Complete!', 'success');
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('zenResponse').innerText = 'Error: ' + error.message;
+            updateStatus('Error: ' + error.message, 'error');
+        }
+    };
+    
+    recognition.onerror = (event) => {
+        console.error('Recognition error:', event.error);
+        updateStatus('Error: ' + event.error, 'error');
+        document.getElementById('startBtn').disabled = false;
+        isListening = false;
+    };
+    
+    recognition.onend = () => {
+        console.log('Recognition ended');
+        document.getElementById('startBtn').disabled = false;
+        isListening = false;
+    };
+    
+    try {
+        recognition.start();
+    } catch (error) {
+        console.error('Error starting recognition:', error);
+        updateStatus('Error starting recognition', 'error');
+        document.getElementById('startBtn').disabled = false;
+        isListening = false;
+    }
+}
+
+// Log when page loads
+window.addEventListener('load', () => {
+    console.log('Voice Assistant loaded');
+    updateStatus('Ready. Click "Start Listening"', 'success');
+});
+</script>
+
+</body>
+</html>

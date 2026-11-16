@@ -1,0 +1,1 @@
+function findThreesome(n) { var result = []; for (var i = 0; i <= n; i++) { for (var j = i + 1; j <= n; j++) { for (var k = j + 1; k <= n; k++) { result.push([i, j, k]); } } return result; console.log(findThreesome(5)); }

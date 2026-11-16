@@ -1,0 +1,1 @@
+def differentiate(f, x):\n    h = 1e-7\n    return (f(x + h) - f(x)) / h

@@ -1,0 +1,1 @@
+print('Dual code')
